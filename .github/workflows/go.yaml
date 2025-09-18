@@ -16,10 +16,10 @@ jobs:
       - name: Build Linux X86_64
         run: |
           mkdir -p ./dist
-          go build -o ./dist/server-linux-amd64 ./cmd/plugstep
+          go build -o ./dist/plugstep ./cmd/plugstep
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: server-linux-amd64
-          path: ./dist/server-linux-amd64
+          path: ./dist/plugstep
