@@ -27,6 +27,8 @@ go.work.sum
 # env file
 .env
 
+plugstep.toml
+
 # Editor/IDE
 # .idea/
 # .vscode/
