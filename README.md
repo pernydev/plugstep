@@ -1,1 +1,1 @@
-<img width="1920" height="1080" alt="Plugstep" src="https://github.com/user-attachments/assets/a5769e1a-9aee-4e02-a416-4f0c2722ed76" />
+<img width="1920" height="2631" alt="plugstep" src="https://github.com/user-attachments/assets/8c791ccc-c2f0-402c-8aff-28b5ba939bb4" />
