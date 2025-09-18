@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -47,9 +48,43 @@ func InstallPlugins(ps *plugstep.Plugstep) error {
 		return err
 	}
 
-	log.Info("Plugins ready.", "installed", installed, "checked", checked)
+	removed := removeOld(ps)
+
+	log.Info("Plugins ready.", "installed", installed, "checked", checked, "removed", removed)
 
 	return nil
+}
+
+// TODO: Add error handling
+func removeOld(ps *plugstep.Plugstep) int {
+	entries, err := os.ReadDir(filepath.Join(ps.ServerDirectory, "plugins"))
+	if err != nil {
+		log.Error("Error reading directory", "err", err)
+		return 0
+	}
+
+	removed := 0
+	for _, f := range entries {
+		if f.IsDir() {
+			continue
+		}
+		found := false
+		for _, p := range ps.Config.Plugins {
+			if f.Name() == *p.Resource+".jar" {
+				found = true
+				continue
+			}
+		}
+		if found == true {
+			continue
+		}
+
+		os.Remove(filepath.Join(ps.ServerDirectory, "plugins", f.Name()))
+		log.Infof("Removed %s", strings.Split(f.Name(), ".")[0])
+		removed++
+	}
+
+	return removed
 }
 
 type PluginInstallStatus string
