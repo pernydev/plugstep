@@ -13,30 +13,36 @@ import (
 	"github.com/pernydev/plugstep/pkg/plugstep/utils"
 )
 
+var statusLines = map[string]int{}
+
 func InstallPlugins(ps *plugstep.Plugstep) error {
 	log.Info("Starting plugin download", "plugins", len(ps.Config.Plugins))
+
+	utils.EnsureDirectory(filepath.Join(ps.ServerDirectory, "plugins"))
 
 	var err error
 	var status PluginInstallStatus
 	var errorPlugin string
 
-	fmt.Println("")
-
 	installed := 0
 	checked := 0
+
+	for _, plugin := range ps.Config.Plugins {
+		renderInstallBadge(&plugin, PluginInstallWaiting)
+	}
 
 	for _, plugin := range ps.Config.Plugins {
 		status, err = installPlugin(ps, &plugin)
 		if err != nil {
 			errorPlugin = *plugin.Resource
+			renderInstallBadge(&plugin, PluginInstallFailed)
 			break
 		}
-		fmt.Printf("\r")
+		renderInstallBadge(&plugin, status)
+		fmt.Println("")
 		if status == PluginInstallStatusInstalled {
-			log.Infof("Installed %s", *plugin.Resource)
 			installed++
 		} else {
-			log.Infof("Checked %s", *plugin.Resource)
 			checked++
 		}
 	}
@@ -64,6 +70,7 @@ func removeOld(ps *plugstep.Plugstep) int {
 	}
 
 	removed := 0
+
 	for _, f := range entries {
 		if f.IsDir() {
 			continue
@@ -92,26 +99,61 @@ type PluginInstallStatus string
 const (
 	PluginInstallStatusInstalled PluginInstallStatus = "installed"
 	PluginInstallStatusChecked   PluginInstallStatus = "checked"
+	PluginInstallPrepairing      PluginInstallStatus = "prepairing"
+	PluginInstallFailed          PluginInstallStatus = "failed"
+	PluginInstallWaiting         PluginInstallStatus = "waiting"
 )
 
-func installPlugin(ps *plugstep.Plugstep, p *config.PluginConfig) (PluginInstallStatus, error) {
+func renderInstallBadge(p *config.PluginConfig, status PluginInstallStatus) {
+	if _, ok := statusLines[*p.Resource]; !ok {
+		for k, v := range statusLines {
+			statusLines[k] = v + 1
+		}
+		fmt.Println("")
+		statusLines[*p.Resource] = 0
+	}
+
 	badge := lipgloss.NewStyle().
-		Background(lipgloss.Color("#ca9ee6")).
-		Foreground(lipgloss.Color("#232634")).
-		PaddingRight(2).
-		PaddingLeft(2).
-		Transform(strings.ToUpper).
-		Render("INSTALLING")
+		Foreground(lipgloss.Color("#cdd6f4")).
+		PaddingRight(1).
+		Bold(true).
+		PaddingLeft(1).
+		Render("🡆")
 
 	sourceBadge := lipgloss.NewStyle().
-		Background(lipgloss.Color("#e78284")).
-		Foreground(lipgloss.Color("#232634")).
+		Background(lipgloss.Color("#89b4fa")).
+		Foreground(lipgloss.Color("#11111b")).
 		PaddingRight(2).
 		PaddingLeft(2).
 		Transform(strings.ToUpper).
 		Render(string(p.Source))
 
-	fmt.Printf("\r%s%s %s", badge, sourceBadge, *p.Resource)
+	background := "#f9e2af"
+	switch status {
+	case PluginInstallFailed:
+		background = "#f38ba8"
+	case PluginInstallStatusChecked:
+		background = "#89dceb"
+	case PluginInstallStatusInstalled:
+		background = "#a6e3a1"
+	}
+
+	statusBadge := lipgloss.NewStyle().
+		Background(lipgloss.Color(background)).
+		Foreground(lipgloss.Color("#232634")).
+		PaddingRight(2).
+		PaddingLeft(2).
+		Transform(strings.ToUpper).
+		Render(string(status))
+
+	cursorNav := strings.Repeat("\033[E", 999)
+
+	fmt.Print(cursorNav + strings.Repeat("\033[F", statusLines[*p.Resource]))
+	fmt.Printf("\r\033[K%s%s%s %s", badge, sourceBadge, statusBadge, *p.Resource)
+}
+
+func installPlugin(ps *plugstep.Plugstep, p *config.PluginConfig) (PluginInstallStatus, error) {
+	renderInstallBadge(p, PluginInstallPrepairing)
 	source := GetSource(p.Source)
 	if source == nil {
 		return "", fmt.Errorf("invalid source")
